@@ -1,0 +1,14 @@
+# 依赖 / 运行产物
+node_modules/
+*.log
+
+# 本地临时文件
+.DS_Store
+*.tmp
+
+# 调试用（个人环境，不入库）
+EdgeDebug/
+Ollama/
+
+# 仅保留脚本本体与文档，排除个人工作区同步文件
+*.bak
