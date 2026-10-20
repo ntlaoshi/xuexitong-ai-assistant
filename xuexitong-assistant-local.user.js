@@ -5,7 +5,7 @@
 // @description  支持学习通/学银在线的视频、章节测验、文档、直播、作业、考试；一键启动、单页面全自动、可最小化运行；答题接入本地大模型（Ollama / LM Studio 等 OpenAI 兼容接口），不依赖任何第三方付费题库。AI 生成，仅供学习交流使用。
 // @description:en Video / quiz / document / live / homework / exam automation for Chaoxing; answers via a local LLM. AI-generated, for learning and exchange only.
 // @namespace    local.llm.chaoxing
-// @version      6.3.2
+// @version      6.3.3
 // @author       申禅姌（原作）/ AI 修改
 // @run-at       document-end
 // @storageName  learningpass_local
@@ -1876,6 +1876,58 @@
                 const tempUIdElement = $d.querySelector("input[name='userId']") || $d.querySelector("input[id='uploadUid']")
                 if (tempUIdElement && !$uid) $uid = tempUIdElement.value
                 body.appendChild(div)
+                // ---- 答题方式：事件委托（兜底，确保点击一定响应）----
+                (function () {
+                    function readCfg() {
+                        try { return JSON.parse($w.localStorage.getItem('xtt_api_cfg') || 'null') || {}; } catch (e) { return {}; }
+                    }
+                    function saveCfg(c) {
+                        try { $w.localStorage.setItem('xtt_api_cfg', JSON.stringify(c)); } catch (e) { }
+                    }
+                    function paint(c) {
+                        const on = !!c.enabled;
+                        const ul = div.querySelector('#useLocal');
+                        const ua = div.querySelector('#useApi');
+                        const box = div.querySelector('#apiCfg');
+                        if (ul) { ul.style.background = on ? '#F44336' : '#4CAF50'; ul.style.color = '#fff'; }
+                        if (ua) { ua.style.background = on ? '#4CAF50' : '#F44336'; ua.style.color = '#fff'; }
+                        if (box) box.style.display = on ? 'block' : 'none';
+                        if (on) {
+                            const urlEl = div.querySelector('#apiUrl');
+                            const keyEl = div.querySelector('#apiKey');
+                            const modelEl = div.querySelector('#apiModel');
+                            if (urlEl && !urlEl.value && c.url) urlEl.value = c.url;
+                            if (keyEl && !keyEl.value && c.key) keyEl.value = c.key;
+                            if (modelEl && !modelEl.value && c.model) modelEl.value = c.model;
+                        }
+                    }
+                    paint(readCfg());
+                    body.addEventListener('click', function (e) {
+                        const id = e.target && e.target.id;
+                        if (!id) return;
+                        if (id === 'useLocal' || id === 'useApi') {
+                            const c = readCfg();
+                            c.enabled = (id === 'useApi');
+                            saveCfg(c);
+                            paint(c);
+                            if (typeof checkModelStatus === 'function') checkModelStatus();
+                        } else if (id === 'saveApi') {
+                            const c = readCfg();
+                            const urlEl = div.querySelector('#apiUrl');
+                            const keyEl = div.querySelector('#apiKey');
+                            const modelEl = div.querySelector('#apiModel');
+                            c.url = urlEl ? urlEl.value.trim() : '';
+                            c.key = keyEl ? keyEl.value.trim() : '';
+                            c.model = modelEl ? modelEl.value.trim() : '';
+                            c.enabled = true;
+                            saveCfg(c);
+                            paint(c);
+                            const hint = div.querySelector('#apiHint');
+                            if (hint) { hint.textContent = '已保存'; setTimeout(function () { hint.textContent = ''; }, 2000); }
+                            if (typeof checkModelStatus === 'function') checkModelStatus();
+                        }
+                    });
+                })();
                 // 开关按钮配色：绿色=开（btn-primary），红色=关（btn-light）
                 (function () {
                     const ids = ['doVideo', 'doWork', 'doDocument', 'doLive', 'doRenwu', 'doNoMission', 'autoSubmit', 'AI'];
@@ -1945,42 +1997,7 @@
                 const checkBtn = div.querySelector('#checkModel');
                 if (checkBtn) checkBtn.addEventListener('click', checkModelStatus);
 
-                // ---- 答题方式：本地模型 / API 二选一 ----
-                (function () {
-                    const apiCfg = (function () {
-                        try { return JSON.parse($w.localStorage.getItem('xtt_api_cfg') || 'null') || {}; } catch (e) { return {}; }
-                    })();
-                    const useLocalEl = div.querySelector('#useLocal');
-                    const useApiEl = div.querySelector('#useApi');
-                    const apiBox = div.querySelector('#apiCfg');
-                    const apiUrlEl = div.querySelector('#apiUrl');
-                    const apiKeyEl = div.querySelector('#apiKey');
-                    const apiModelEl = div.querySelector('#apiModel');
-                    const saveApiEl = div.querySelector('#saveApi');
-                    const apiHintEl = div.querySelector('#apiHint');
-                    if (!useLocalEl || !useApiEl) return;
-                    if (apiUrlEl) apiUrlEl.value = apiCfg.url || '';
-                    if (apiKeyEl) apiKeyEl.value = apiCfg.key || '';
-                    if (apiModelEl) apiModelEl.value = apiCfg.model || '';
-                    function paint() {
-                        const on = !!apiCfg.enabled;
-                        useLocalEl.style.background = on ? '#F44336' : '#4CAF50';
-                        useApiEl.style.background = on ? '#4CAF50' : '#F44336';
-                        if (apiBox) apiBox.style.display = on ? 'block' : 'none';
-                    }
-                    function persist() { $w.localStorage.setItem('xtt_api_cfg', JSON.stringify(apiCfg)); }
-                    paint();
-                    useLocalEl.addEventListener('click', function () { apiCfg.enabled = false; persist(); paint(); checkModelStatus(); });
-                    useApiEl.addEventListener('click', function () { apiCfg.enabled = true; persist(); paint(); checkModelStatus(); });
-                    if (saveApiEl) saveApiEl.addEventListener('click', function () {
-                        apiCfg.url = (apiUrlEl.value || '').trim();
-                        apiCfg.key = (apiKeyEl.value || '').trim();
-                        apiCfg.model = (apiModelEl.value || '').trim();
-                        apiCfg.enabled = true;
-                        persist(); paint(); checkModelStatus();
-                        if (apiHintEl) { apiHintEl.textContent = '已保存'; setTimeout(function () { apiHintEl.textContent = ''; }, 2000); }
-                    });
-                })();
+                // 答题方式的初始化与点击已改为 body 事件委托（见 appendChild 之后）
                 checkModelStatus();
                 setInterval(checkModelStatus, 30000);
                 const warning = $d.querySelector('.warn-txt') || $d.querySelector('.continue-study')
