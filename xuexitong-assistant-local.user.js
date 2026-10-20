@@ -5,7 +5,7 @@
 // @description  支持学习通/学银在线的视频、章节测验、文档、直播、作业、考试；一键启动、单页面全自动、可最小化运行；答题接入本地大模型（Ollama / LM Studio 等 OpenAI 兼容接口），不依赖任何第三方付费题库。AI 生成，仅供学习交流使用。
 // @description:en Video / quiz / document / live / homework / exam automation for Chaoxing; answers via a local LLM. AI-generated, for learning and exchange only.
 // @namespace    local.llm.chaoxing
-// @version      6.2.3
+// @version      6.2.4
 // @author       申禅姌（原作）/ AI 修改
 // @run-at       document-end
 // @storageName  learningpass_local
@@ -2253,12 +2253,12 @@
                             <div class="form-row">
                                 <div class="form-group col-md-6">
                                     <label for="exampleInputPassword1">视频倍速</label>
-                                    <input type="number" class="form-control" id="beisuInput" />
+                                    <input type="number" class="form-control" id="beisuInput" value="1" min="0.5" max="16" step="0.5" />
                                     <small class="form-text text-muted">倍速大于1倍会被清空进度，大于2倍可能无法完成任务</small>
                                 </div>
                                 <div class="form-group col-md-6">
                                     <label for="exampleInputPassword1">最低正确率</label>
-                                    <input type="number" class="form-control" id="vgqtlv" />
+                                    <input type="number" class="form-control" id="vgqtlv" value="85" min="0" max="100" />
                                     <small class="form-text text-muted">当脚本作答后的正确率低于这个数值时不会自动提交</small>
                                 </div>
                             </div>
