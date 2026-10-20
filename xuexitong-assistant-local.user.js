@@ -5,7 +5,7 @@
 // @description  支持学习通/学银在线的视频、章节测验、文档、直播、作业、考试；一键启动、单页面全自动、可最小化运行；答题接入本地大模型（Ollama / LM Studio 等 OpenAI 兼容接口），不依赖任何第三方付费题库。AI 生成，仅供学习交流使用。
 // @description:en Video / quiz / document / live / homework / exam automation for Chaoxing; answers via a local LLM. AI-generated, for learning and exchange only.
 // @namespace    local.llm.chaoxing
-// @version      6.3.1
+// @version      6.3.2
 // @author       申禅姌（原作）/ AI 修改
 // @run-at       document-end
 // @storageName  learningpass_local
@@ -122,18 +122,18 @@
         var cfg = { url: 'http://localhost:11434/v1/chat/completions', model: 'qwen2.5:7b', apiKey: '', temperature: 0.1 };
         // 优先使用 API 答题（面板里勾选「API」并保存后生效）
         try {
-            var api = JSON.parse(localStorage.getItem('xtt_api_cfg') || 'null');
+            var api = JSON.parse(unsafeWindow.localStorage.getItem('xtt_api_cfg') || 'null');
             if (api && api.enabled && api.url) {
                 return { url: api.url, model: api.model || 'gpt-4o-mini', apiKey: api.key || '', temperature: 0.1 };
             }
         } catch (e) { }
         try {
-            var a = JSON.parse(localStorage.getItem('xtt_local_model') || 'null');
+            var a = JSON.parse(unsafeWindow.localStorage.getItem('xtt_local_model') || 'null');
             if (a && a.url) cfg.url = a.url;
             if (a && a.model) cfg.model = a.model;
         } catch (e) { }
         try {
-            var b = JSON.parse(localStorage.getItem('xtt_local_model_cfg') || 'null');
+            var b = JSON.parse(unsafeWindow.localStorage.getItem('xtt_local_model_cfg') || 'null');
             if (b) { if (b.url) cfg.url = b.url; if (b.model) cfg.model = b.model; if (b.apiKey) cfg.apiKey = b.apiKey; }
         } catch (e) { }
         return cfg;
@@ -1833,10 +1833,10 @@
         ">
                 <span style="flex: 1;">
                     <div style="margin: 20px 0 10px;">答题方式</div>
-                    <span style="display: flex; align-items: center; gap: 8px;">
-                        <span id="useLocal" style="cursor:pointer;padding:0 10px;line-height:32px;height:32px;border-radius:10px;font-size:14px;color:#fff;">本地模型</span>
-                        <span id="useApi" style="cursor:pointer;padding:0 10px;line-height:32px;height:32px;border-radius:10px;font-size:14px;color:#fff;">API</span>
-                        <span id="modelStatus" style="font-size:14px; color:#999; margin-left: 6px;">检测中...</span>
+                    <span style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <span id="useLocal" style="cursor:pointer;padding:0 12px;line-height:32px;height:32px;border-radius:10px;font-size:14px;color:#fff;background:#4CAF50;font-weight:600;">本地模型</span>
+                        <span id="useApi" style="cursor:pointer;padding:0 12px;line-height:32px;height:32px;border-radius:10px;font-size:14px;color:#fff;background:#F44336;font-weight:600;">API</span>
+                        <span id="modelStatus" style="font-size:14px; color:#999; margin-left: 6px;">点击「重新检测」</span>
                         <span id="checkModel" style="cursor:pointer;color:#68A4FF;padding:0 8px;line-height:30px;height:30px;border:1px solid #68A4FF;border-radius:8px;font-size:13px;">重新检测</span>
                     </span>
                     <div id="apiCfg" style="display:none; margin-top:10px;">
@@ -1881,17 +1881,17 @@
                     const ids = ['doVideo', 'doWork', 'doDocument', 'doLive', 'doRenwu', 'doNoMission', 'autoSubmit', 'AI'];
                     const offCss = ids.map(function (id) { return '#' + id + '.btn-light'; }).join(',') + '{background-color:#F44336!important;border-color:#F44336!important;color:#fff!important;}';
                     const onCss = ids.map(function (id) { return '#' + id + '.btn-primary'; }).join(',') + '{background-color:#4CAF50!important;border-color:#4CAF50!important;color:#fff!important;}';
-                    const st = document.createElement('style');
+                    const st = $d.createElement('style');
                     st.textContent = offCss + onCss;
-                    (document.head || document.documentElement).appendChild(st);
+                    ($d.head || $d.documentElement).appendChild(st);
                 })();
                 // ---- 本地模型连接状态（面板实时显示）----
                 function checkModelStatus() {
-                    const el = $d.querySelector('#modelStatus');
+                    const el = div.querySelector('#modelStatus');
                     if (!el) return;
                     // 启用 API 时直接显示 API 状态
                     try {
-                        const api = JSON.parse(localStorage.getItem('xtt_api_cfg') || 'null');
+                        const api = JSON.parse($w.localStorage.getItem('xtt_api_cfg') || 'null');
                         if (api && api.enabled && api.url) {
                             el.innerHTML = '✅ API 已配置 <span style="color:#666;font-size:13px;">' + (api.model || '') + '</span>';
                             el.style.color = '#4CAF50';
@@ -1901,7 +1901,7 @@
                     el.textContent = '检测中...'; el.style.color = '#999';
                     let cfg = { url: 'http://localhost:11434/v1/chat/completions', model: 'qwen2.5:7b' };
                     try {
-                        const s = JSON.parse(localStorage.getItem('xtt_local_model') || 'null');
+                        const s = JSON.parse($w.localStorage.getItem('xtt_local_model') || 'null');
                         if (s && s.url) cfg.url = s.url;
                         if (s && s.model) cfg.model = s.model;
                     } catch (e) { }
@@ -1942,22 +1942,22 @@
                         finish('❌ 未连接（请求异常）', '#F44336');
                     }
                 }
-                const checkBtn = $d.querySelector('#checkModel');
+                const checkBtn = div.querySelector('#checkModel');
                 if (checkBtn) checkBtn.addEventListener('click', checkModelStatus);
 
                 // ---- 答题方式：本地模型 / API 二选一 ----
                 (function () {
                     const apiCfg = (function () {
-                        try { return JSON.parse(localStorage.getItem('xtt_api_cfg') || 'null') || {}; } catch (e) { return {}; }
+                        try { return JSON.parse($w.localStorage.getItem('xtt_api_cfg') || 'null') || {}; } catch (e) { return {}; }
                     })();
-                    const useLocalEl = $d.querySelector('#useLocal');
-                    const useApiEl = $d.querySelector('#useApi');
-                    const apiBox = $d.querySelector('#apiCfg');
-                    const apiUrlEl = $d.querySelector('#apiUrl');
-                    const apiKeyEl = $d.querySelector('#apiKey');
-                    const apiModelEl = $d.querySelector('#apiModel');
-                    const saveApiEl = $d.querySelector('#saveApi');
-                    const apiHintEl = $d.querySelector('#apiHint');
+                    const useLocalEl = div.querySelector('#useLocal');
+                    const useApiEl = div.querySelector('#useApi');
+                    const apiBox = div.querySelector('#apiCfg');
+                    const apiUrlEl = div.querySelector('#apiUrl');
+                    const apiKeyEl = div.querySelector('#apiKey');
+                    const apiModelEl = div.querySelector('#apiModel');
+                    const saveApiEl = div.querySelector('#saveApi');
+                    const apiHintEl = div.querySelector('#apiHint');
                     if (!useLocalEl || !useApiEl) return;
                     if (apiUrlEl) apiUrlEl.value = apiCfg.url || '';
                     if (apiKeyEl) apiKeyEl.value = apiCfg.key || '';
@@ -1968,7 +1968,7 @@
                         useApiEl.style.background = on ? '#4CAF50' : '#F44336';
                         if (apiBox) apiBox.style.display = on ? 'block' : 'none';
                     }
-                    function persist() { localStorage.setItem('xtt_api_cfg', JSON.stringify(apiCfg)); }
+                    function persist() { $w.localStorage.setItem('xtt_api_cfg', JSON.stringify(apiCfg)); }
                     paint();
                     useLocalEl.addEventListener('click', function () { apiCfg.enabled = false; persist(); paint(); checkModelStatus(); });
                     useApiEl.addEventListener('click', function () { apiCfg.enabled = true; persist(); paint(); checkModelStatus(); });
