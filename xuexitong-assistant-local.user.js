@@ -5,7 +5,7 @@
 // @description  支持学习通/学银在线的视频、章节测验、文档、直播、作业、考试；一键启动、单页面全自动、可最小化运行；答题接入本地大模型（Ollama / LM Studio 等 OpenAI 兼容接口），不依赖任何第三方付费题库。AI 生成，仅供学习交流使用。
 // @description:en Video / quiz / document / live / homework / exam automation for Chaoxing; answers via a local LLM. AI-generated, for learning and exchange only.
 // @namespace    local.llm.chaoxing
-// @version      6.3.4
+// @version      6.4.1
 // @author       申禅姌（原作）/ AI 修改
 // @run-at       document-end
 // @storageName  learningpass_local
@@ -26,6 +26,7 @@
 //👆👆👆👆👆👆👆👆请将脚本提示的代码填入上面空白中，一行一个，按Ctrl+S保存👆👆👆👆👆👆👆👆
 //👆👆👆👆👆👆👆👆請將腳本提示的程式碼填入上面空白中，一行一個，按Ctrl+S儲存👆👆👆👆👆👆👆
 //👆👆👆👆👆👆👆👆Please fill in the code prompted by the script into the blanks above, one per line, and press Ctrl+S to save.👆👆👆👆👆👆👆
+// @connect      *
 // @connect      localhost
 // @connect      127.0.0.1
 // @connect      mooc1.wljx.hfut.edu.cn
@@ -1840,9 +1841,22 @@
                         <span id="checkModel" style="cursor:pointer;color:#68A4FF;padding:0 8px;line-height:30px;height:30px;border:1px solid #68A4FF;border-radius:8px;font-size:13px;">重新检测</span>
                     </span>
                     <div id="apiCfg" style="display:none; margin-top:10px;">
-                        <input id="apiUrl" placeholder="API 地址，如 https://api.deepseek.com/v1/chat/completions" style="width:100%;box-sizing:border-box;margin-bottom:6px;padding:6px 8px;border:1px solid #ccc;border-radius:6px;" />
-                        <input id="apiKey" type="password" placeholder="API Key（sk-...）" style="width:100%;box-sizing:border-box;margin-bottom:6px;padding:6px 8px;border:1px solid #ccc;border-radius:6px;" />
-                        <input id="apiModel" placeholder="模型名，如 deepseek-chat / gpt-4o-mini" style="width:100%;box-sizing:border-box;margin-bottom:6px;padding:6px 8px;border:1px solid #ccc;border-radius:6px;" />
+                        <select id="apiProvider" style="width:100%;box-sizing:border-box;margin-bottom:6px;padding:6px 8px;border:1px solid #ccc;border-radius:6px;background:#fff;">
+                            <option value="">选择服务商（自动填地址）</option>
+                            <option value="deepseek">DeepSeek</option>
+                            <option value="openai">OpenAI</option>
+                            <option value="dashscope">通义千问（阿里云）</option>
+                            <option value="siliconflow">硅基流动</option>
+                            <option value="moonshot">Moonshot（Kimi）</option>
+                            <option value="zhipu">智谱 GLM</option>
+                            <option value="custom">自定义地址</option>
+                        </select>
+                        <input id="apiUrl" placeholder="API 地址（选服务商自动填）" style="width:100%;box-sizing:border-box;margin-bottom:6px;padding:6px 8px;border:1px solid #ccc;border-radius:6px;" />
+                        <input id="apiKey" type="password" placeholder="API Key（填完自动加载模型）" style="width:100%;box-sizing:border-box;margin-bottom:6px;padding:6px 8px;border:1px solid #ccc;border-radius:6px;" />
+                        <select id="apiModelSelect" style="width:100%;box-sizing:border-box;margin-bottom:6px;padding:6px 8px;border:1px solid #ccc;border-radius:6px;background:#fff;">
+                            <option value="">（填 Key 后自动加载模型）</option>
+                        </select>
+                        <input id="apiModel" placeholder="或手动输入模型名" style="width:100%;box-sizing:border-box;margin-bottom:6px;padding:6px 8px;border:1px solid #ccc;border-radius:6px;" />
                         <span id="saveApi" style="cursor:pointer;background:#68A4FF;color:#fff;padding:4px 14px;border-radius:8px;font-size:13px;">保存 API 配置</span>
                         <span id="apiHint" style="font-size:12px;color:#999;margin-left:8px;"></span>
                     </div>
@@ -1902,6 +1916,66 @@
                         }
                     }
                     paint(readCfg());
+                    var PROVIDERS = {
+                        deepseek: 'https://api.deepseek.com/v1/chat/completions',
+                        openai: 'https://api.openai.com/v1/chat/completions',
+                        dashscope: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+                        siliconflow: 'https://api.siliconflow.cn/v1/chat/completions',
+                        moonshot: 'https://api.moonshot.cn/v1/chat/completions',
+                        zhipu: 'https://open.bigmodel.cn/api/paas/v4/chat/completions'
+                    };
+                    function loadModels() {
+                        const urlEl = div.querySelector('#apiUrl');
+                        const keyEl = div.querySelector('#apiKey');
+                        const sel = div.querySelector('#apiModelSelect');
+                        const hint = div.querySelector('#apiHint');
+                        const url = urlEl ? urlEl.value.trim() : '';
+                        const key = keyEl ? keyEl.value.trim() : '';
+                        if (!url || !key) return;
+                        if (hint) hint.textContent = '加载模型…';
+                        const base = url.replace(/\/v1\/.*$/, '').replace(/\/+$/, '');
+                        try {
+                            GM_xmlhttpRequest({
+                                method: 'GET',
+                                url: base + '/models',
+                                headers: { 'Authorization': 'Bearer ' + key },
+                                timeout: 12000,
+                                onload: function (res) {
+                                    try {
+                                        const j = JSON.parse(res.responseText);
+                                        const list = (j.data || j.models || []).map(function (m) { return m.id || m.name; }).filter(Boolean);
+                                        if (!list.length) { if (hint) hint.textContent = '未返回模型列表'; return; }
+                                        if (sel) {
+                                            sel.innerHTML = '<option value="">选择模型（' + list.length + ' 个）</option>' + list.map(function (id) { return '<option value="' + id + '">' + id + '</option>'; }).join('');
+                                        }
+                                        if (hint) hint.textContent = '已加载 ' + list.length + ' 个模型，请选择';
+                                    } catch (e) { if (hint) hint.textContent = '解析模型列表失败'; }
+                                },
+                                onerror: function () { if (hint) hint.textContent = '加载失败（检查地址/Key）'; },
+                                ontimeout: function () { if (hint) hint.textContent = '加载超时'; }
+                            });
+                        } catch (e) { if (hint) hint.textContent = '请求异常'; }
+                    }
+                    body.addEventListener('change', function (e) {
+                        const id = e.target && e.target.id;
+                        if (id === 'apiProvider') {
+                            const urlEl = div.querySelector('#apiUrl');
+                            if (urlEl && PROVIDERS[e.target.value]) urlEl.value = PROVIDERS[e.target.value];
+                        } else if (id === 'apiKey') {
+                            loadModels();
+                        } else if (id === 'apiModelSelect') {
+                            const modelEl = div.querySelector('#apiModel');
+                            if (modelEl && e.target.value) modelEl.value = e.target.value;
+                        }
+                    });
+                    // 输入 Key 时防抖自动加载模型（不用等失焦）
+                    var _keyTimer = null;
+                    body.addEventListener('input', function (e) {
+                        if (e.target && e.target.id === 'apiKey') {
+                            clearTimeout(_keyTimer);
+                            _keyTimer = setTimeout(loadModels, 800);
+                        }
+                    });
                     body.addEventListener('click', function (e) {
                         const id = e.target && e.target.id;
                         if (!id) return;
