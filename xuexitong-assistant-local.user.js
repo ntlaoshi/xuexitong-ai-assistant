@@ -5,7 +5,7 @@
 // @description  支持学习通/学银在线的视频、章节测验、文档、直播、作业、考试；一键启动、单页面全自动、可最小化运行；答题接入本地大模型（Ollama / LM Studio 等 OpenAI 兼容接口），不依赖任何第三方付费题库。AI 生成，仅供学习交流使用。
 // @description:en Video / quiz / document / live / homework / exam automation for Chaoxing; answers via a local LLM. AI-generated, for learning and exchange only.
 // @namespace    local.llm.chaoxing
-// @version      6.2.1
+// @version      6.2.2
 // @author       申禅姌（原作）/ AI 修改
 // @run-at       document-end
 // @storageName  learningpass_local
@@ -1836,7 +1836,6 @@
                 
             </div>
             <div style="font-size: 16px;text-align: center;">项目主页：<a href="https://github.com/ntlaoshi/xuexitong-ai-assistant" target="_blank">GitHub</a></div>
-            <div id="updateinfo" style="font-size: 16px;text-align: center;color: red;display: none;">脚本有新版本，<a href="https://scriptcat.org/zh-CN/script-show-page/1127" target="_blank">点我前往更新</a></div>
             <div style="font-size: 16px;text-align: center;">该课程支持刷课，请选择您要刷的内容</div>
             <div style="margin-top: 20px;display: flex;justify-content: center;margin-bottom: 10px;">
                 <a
@@ -1918,36 +1917,6 @@
                 ctk(getTkToken())
             }, 800)
             setTimeout(async () => {
-                try {
-                    GM_xmlhttpRequest({
-                        url: 'https://scriptcat.org/scripts/code/1127/%E8%B6%85%E6%98%9F%E5%AD%A6%E4%B9%A0%E9%80%9A%E4%B9%9D%E4%B9%9D%E5%8A%A9%E6%89%8B%5BAI%E7%AD%94%E9%A2%98%5D%5B%E4%B8%80%E9%94%AE%E5%90%AF%E5%8A%A8%5D%5B%E6%9C%80%E5%B0%8F%E5%8C%96%E8%BF%90%E8%A1%8C%5D.user.js',
-                        headers: {
-                            'dnt': '1',
-                            'referer': 'https://scriptcat.org/zh-CN/script-show-page/1127',
-                            'sec-ch-ua': '"Chromium";v="142", "Microsoft Edge";v="142", "Not_A Brand";v="99"',
-                            'sec-ch-ua-arch': '"x86"',
-                            'sec-ch-ua-bitness': '"64"',
-                            'sec-ch-ua-full-version': '"142.0.3595.65"',
-                            'sec-ch-ua-full-version-list': '"Chromium";v="142.0.7444.135", "Microsoft Edge";v="142.0.3595.65", "Not_A Brand";v="99.0.0.0"',
-                            'sec-ch-ua-mobile': '?0',
-                            'sec-ch-ua-model': '""',
-                            'sec-ch-ua-platform': '"Windows"',
-                            'sec-ch-ua-platform-version': '"10.0.0"',
-                            'upgrade-insecure-requests': '1'
-                        },
-                        method: 'GET',
-                        timeout: 5000,
-                        onload(res) {
-                            try {
-                                let result = res.responseText.match(/\/\/\s*@version\s*(\d{1}\.\d{1}\.\d{1})+\s+/)
-                                if (result[1] != GM_info.script.version) {
-                                    div.querySelector('#updateinfo').style.display = 'block'
-                                }
-                            } catch (e) {
-                            }
-                        }
-                    })
-                } catch (e) { }
                 let tkToken = getTkToken()
                 const _tokenInput = $d.querySelector("#token"); if (_tokenInput) _tokenInput.value = tkToken
                 const pannel = $d.querySelector('#skpannel')
