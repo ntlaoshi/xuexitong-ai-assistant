@@ -5,7 +5,7 @@
 // @description  支持学习通/学银在线的视频、章节测验、文档、直播、作业、考试；一键启动、单页面全自动、可最小化运行；答题接入本地大模型（Ollama / LM Studio 等 OpenAI 兼容接口），不依赖任何第三方付费题库。AI 生成，仅供学习交流使用。
 // @description:en Video / quiz / document / live / homework / exam automation for Chaoxing; answers via a local LLM. AI-generated, for learning and exchange only.
 // @namespace    local.llm.chaoxing
-// @version      6.2.5
+// @version      6.2.6
 // @author       申禅姌（原作）/ AI 修改
 // @run-at       document-end
 // @storageName  learningpass_local
@@ -1861,6 +1861,15 @@
                 const tempUIdElement = $d.querySelector("input[name='userId']") || $d.querySelector("input[id='uploadUid']")
                 if (tempUIdElement && !$uid) $uid = tempUIdElement.value
                 body.appendChild(div)
+                // 开关按钮配色：绿色=开（btn-primary），红色=关（btn-light）
+                (function () {
+                    const ids = ['doVideo', 'doWork', 'doDocument', 'doLive', 'doRenwu', 'doNoMission', 'autoSubmit', 'AI'];
+                    const offCss = ids.map(function (id) { return '#' + id + '.btn-light'; }).join(',') + '{background-color:#F44336!important;border-color:#F44336!important;color:#fff!important;}';
+                    const onCss = ids.map(function (id) { return '#' + id + '.btn-primary'; }).join(',') + '{background-color:#4CAF50!important;border-color:#4CAF50!important;color:#fff!important;}';
+                    const st = document.createElement('style');
+                    st.textContent = offCss + onCss;
+                    (document.head || document.documentElement).appendChild(st);
+                })();
                 // ---- 本地模型连接状态（面板实时显示）----
                 function checkModelStatus() {
                     const el = $d.querySelector('#modelStatus');
