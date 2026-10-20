@@ -5,7 +5,7 @@
 // @description  支持学习通/学银在线的视频、章节测验、文档、直播、作业、考试；一键启动、单页面全自动、可最小化运行；答题接入本地大模型（Ollama / LM Studio 等 OpenAI 兼容接口），不依赖任何第三方付费题库。AI 生成，仅供学习交流使用。
 // @description:en Video / quiz / document / live / homework / exam automation for Chaoxing; answers via a local LLM. AI-generated, for learning and exchange only.
 // @namespace    local.llm.chaoxing
-// @version      6.2.6
+// @version      6.3.0
 // @author       申禅姌（原作）/ AI 修改
 // @run-at       document-end
 // @storageName  learningpass_local
@@ -120,6 +120,13 @@
     // 所有“查题”请求都会被拦截到这里，调用本地 OpenAI 兼容接口（Ollama / LM Studio）
     function _llmGetCfg() {
         var cfg = { url: 'http://localhost:11434/v1/chat/completions', model: 'qwen2.5:7b', apiKey: '', temperature: 0.1 };
+        // 优先使用 API 答题（面板里勾选「API」并保存后生效）
+        try {
+            var api = JSON.parse(localStorage.getItem('xtt_api_cfg') || 'null');
+            if (api && api.enabled && api.url) {
+                return { url: api.url, model: api.model || 'gpt-4o-mini', apiKey: api.key || '', temperature: 0.1 };
+            }
+        } catch (e) { }
         try {
             var a = JSON.parse(localStorage.getItem('xtt_local_model') || 'null');
             if (a && a.url) cfg.url = a.url;
@@ -1824,13 +1831,21 @@
         justify-content: space-between;
         margin-bottom: 30px;
         ">
-                <span>
-                    <div style="margin: 20px 0 10px;">本地模型状态</div>
-                    <span style="display: flex; align-items: center;">
-                        <span id="modelStatus" style="font-size:16px; color:#999;">检测中...</span>
-                        <span
-                            style="cursor: pointer; color: #68A4FF; padding: 0 10px; line-height: 34px; height: 34px;margin-left: 12px; border: 1px solid #68A4FF;display: inline-block ;border-radius: 10px;font-size:14px;" id="checkModel">重新检测</span>
+                <span style="flex: 1;">
+                    <div style="margin: 20px 0 10px;">答题方式</div>
+                    <span style="display: flex; align-items: center; gap: 8px;">
+                        <span id="useLocal" style="cursor:pointer;padding:0 10px;line-height:32px;height:32px;border-radius:10px;font-size:14px;color:#fff;">本地模型</span>
+                        <span id="useApi" style="cursor:pointer;padding:0 10px;line-height:32px;height:32px;border-radius:10px;font-size:14px;color:#fff;">API</span>
+                        <span id="modelStatus" style="font-size:14px; color:#999; margin-left: 6px;">检测中...</span>
+                        <span id="checkModel" style="cursor:pointer;color:#68A4FF;padding:0 8px;line-height:30px;height:30px;border:1px solid #68A4FF;border-radius:8px;font-size:13px;">重新检测</span>
                     </span>
+                    <div id="apiCfg" style="display:none; margin-top:10px;">
+                        <input id="apiUrl" placeholder="API 地址，如 https://api.deepseek.com/v1/chat/completions" style="width:100%;box-sizing:border-box;margin-bottom:6px;padding:6px 8px;border:1px solid #ccc;border-radius:6px;" />
+                        <input id="apiKey" type="password" placeholder="API Key（sk-...）" style="width:100%;box-sizing:border-box;margin-bottom:6px;padding:6px 8px;border:1px solid #ccc;border-radius:6px;" />
+                        <input id="apiModel" placeholder="模型名，如 deepseek-chat / gpt-4o-mini" style="width:100%;box-sizing:border-box;margin-bottom:6px;padding:6px 8px;border:1px solid #ccc;border-radius:6px;" />
+                        <span id="saveApi" style="cursor:pointer;background:#68A4FF;color:#fff;padding:4px 14px;border-radius:8px;font-size:13px;">保存 API 配置</span>
+                        <span id="apiHint" style="font-size:12px;color:#999;margin-left:8px;"></span>
+                    </div>
                 </span>
             </div>
             <div id="tokentip" style="display: none; font-size: 14px; border-top: 1px solid black;border-bottom: 1px solid black;">
@@ -1874,6 +1889,15 @@
                 function checkModelStatus() {
                     const el = $d.querySelector('#modelStatus');
                     if (!el) return;
+                    // 启用 API 时直接显示 API 状态
+                    try {
+                        const api = JSON.parse(localStorage.getItem('xtt_api_cfg') || 'null');
+                        if (api && api.enabled && api.url) {
+                            el.innerHTML = '✅ API 已配置 <span style="color:#666;font-size:13px;">' + (api.model || '') + '</span>';
+                            el.style.color = '#4CAF50';
+                            return;
+                        }
+                    } catch (e) { }
                     el.textContent = '检测中...'; el.style.color = '#999';
                     let cfg = { url: 'http://localhost:11434/v1/chat/completions', model: 'qwen2.5:7b' };
                     try {
@@ -1904,6 +1928,43 @@
                 }
                 const checkBtn = $d.querySelector('#checkModel');
                 if (checkBtn) checkBtn.addEventListener('click', checkModelStatus);
+
+                // ---- 答题方式：本地模型 / API 二选一 ----
+                (function () {
+                    const apiCfg = (function () {
+                        try { return JSON.parse(localStorage.getItem('xtt_api_cfg') || 'null') || {}; } catch (e) { return {}; }
+                    })();
+                    const useLocalEl = $d.querySelector('#useLocal');
+                    const useApiEl = $d.querySelector('#useApi');
+                    const apiBox = $d.querySelector('#apiCfg');
+                    const apiUrlEl = $d.querySelector('#apiUrl');
+                    const apiKeyEl = $d.querySelector('#apiKey');
+                    const apiModelEl = $d.querySelector('#apiModel');
+                    const saveApiEl = $d.querySelector('#saveApi');
+                    const apiHintEl = $d.querySelector('#apiHint');
+                    if (!useLocalEl || !useApiEl) return;
+                    if (apiUrlEl) apiUrlEl.value = apiCfg.url || '';
+                    if (apiKeyEl) apiKeyEl.value = apiCfg.key || '';
+                    if (apiModelEl) apiModelEl.value = apiCfg.model || '';
+                    function paint() {
+                        const on = !!apiCfg.enabled;
+                        useLocalEl.style.background = on ? '#F44336' : '#4CAF50';
+                        useApiEl.style.background = on ? '#4CAF50' : '#F44336';
+                        if (apiBox) apiBox.style.display = on ? 'block' : 'none';
+                    }
+                    function persist() { localStorage.setItem('xtt_api_cfg', JSON.stringify(apiCfg)); }
+                    paint();
+                    useLocalEl.addEventListener('click', function () { apiCfg.enabled = false; persist(); paint(); checkModelStatus(); });
+                    useApiEl.addEventListener('click', function () { apiCfg.enabled = true; persist(); paint(); checkModelStatus(); });
+                    if (saveApiEl) saveApiEl.addEventListener('click', function () {
+                        apiCfg.url = (apiUrlEl.value || '').trim();
+                        apiCfg.key = (apiKeyEl.value || '').trim();
+                        apiCfg.model = (apiModelEl.value || '').trim();
+                        apiCfg.enabled = true;
+                        persist(); paint(); checkModelStatus();
+                        if (apiHintEl) { apiHintEl.textContent = '已保存'; setTimeout(function () { apiHintEl.textContent = ''; }, 2000); }
+                    });
+                })();
                 checkModelStatus();
                 setInterval(checkModelStatus, 30000);
                 const warning = $d.querySelector('.warn-txt') || $d.querySelector('.continue-study')
