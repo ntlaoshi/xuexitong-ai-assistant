@@ -5,7 +5,7 @@
 // @description  支持学习通/学银在线的视频、章节测验、文档、直播、作业、考试；一键启动、单页面全自动、可最小化运行；答题接入本地大模型（Ollama / LM Studio 等 OpenAI 兼容接口），不依赖任何第三方付费题库。AI 生成，仅供学习交流使用。
 // @description:en Video / quiz / document / live / homework / exam automation for Chaoxing; answers via a local LLM. AI-generated, for learning and exchange only.
 // @namespace    local.llm.chaoxing
-// @version      6.2.4
+// @version      6.2.5
 // @author       申禅姌（原作）/ AI 修改
 // @run-at       document-end
 // @storageName  learningpass_local
@@ -691,7 +691,7 @@
         $w = unsafeWindow,
         $l = $w.location.href,
         $d = $w.document,
-        $version = GM_info.script.version.replaceAll('.', ''),
+        $version = ((typeof GM_info !== 'undefined' && GM_info && GM_info.script && GM_info.script.version) || '624').replaceAll('.', ''),
         // 调用$s[value]可以获取url查询值
         $s = Object.fromEntries(new URLSearchParams($w.location.search)),
         $protocol = $w.location.protocol + "//",
@@ -1171,7 +1171,7 @@
             }
             const scriptNum = $w.checkConcurrency.length
             if (scriptNum > 1) {
-                alert(`【学习通全自动助手】\n\n请勿多开此脚本，您开启了${scriptNum}个，请删除多余脚本\n\n请检查您是否同时安装了多个相同的脚本\n是否同时安装了多个脚本管理器：脚本猫、暴力猴、油猴等\n是否有脚本管理器插件被归档至扩展按钮中`);
+                console.warn(`【学习通全自动助手】检测到脚本被注入 ${scriptNum} 次（刷新会累积），已忽略多开提示，不影响使用`);
                 return true;
             }
             return false;
@@ -2005,7 +2005,7 @@
         $w.wait = false;
         // 某些脚本在某些脚本插件运行时会导致此脚本版本号异常
         if (!$version || $version == '' || $version == undefined) {
-            alert('请关闭其他同类型脚本，否则此脚本无法正常运行');
+            console.warn('版本号读取异常，已继续运行');
         }
         $d.getElementsByTagName('body')[0].innerHTML = '加载中。。。<br><br>如遇脚本异常，请尝试<a href="https://github.com/ntlaoshi/xuexitong-ai-assistant">从 GitHub 重新安装脚本</a>';
         let beisu = 1,
