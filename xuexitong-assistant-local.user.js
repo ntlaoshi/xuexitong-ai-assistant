@@ -5,7 +5,7 @@
 // @description  支持学习通/学银在线的视频、章节测验、文档、直播、作业、考试；一键启动、单页面全自动、可最小化运行；答题接入本地大模型（Ollama / LM Studio 等 OpenAI 兼容接口），不依赖任何第三方付费题库。AI 生成，仅供学习交流使用。
 // @description:en Video / quiz / document / live / homework / exam automation for Chaoxing; answers via a local LLM. AI-generated, for learning and exchange only.
 // @namespace    local.llm.chaoxing
-// @version      6.1.0
+// @version      6.2.0
 // @author       申禅姌（原作）/ AI 修改
 // @run-at       document-end
 // @storageName  learningpass_local
@@ -1824,30 +1824,11 @@
         margin-bottom: 30px;
         ">
                 <span>
-                    <div style="margin: 20px 0 10px;">题库Token</div>
-                    <span style="display: flex;">
-                        <input id="token"
-                            style="color: #495057; outline: none; font-size:18px;width:  250px;height: 40px;border-radius: 10px;padding: 0 10px;border: 1px solid #68A4FF;"
-                            type="text">
+                    <div style="margin: 20px 0 10px;">本地模型状态</div>
+                    <span style="display: flex; align-items: center;">
+                        <span id="modelStatus" style="font-size:16px; color:#999;">检测中...</span>
                         <span
-                            style="cursor: pointer; color: #68A4FF; padding: 0 10px; line-height: 38px; height: 38px;margin-left: 10px; border: 1px solid #68A4FF;display: inline-block ;border-radius: 10px;" id="saveToken">保存</span>
-                    </span>
-    
-                </span>
-                <span>
-                    <div style="margin: 20px 0 10px;">剩余次数</div>
-                    <span style="display: flex;">
-                        <input id="tokenLeft" disabled="disabled" value="6666"
-                            style="color: #495057; outline: none; font-size:18px;width:  80px;height: 40px;border-radius: 10px;padding: 0 10px;border: 1px solid #68A4FF;"
-                            type="text">
-                        <a target="_blank" style="cursor: pointer; color: #68A4FF; padding: 0 10px; line-height: 38px; height: 38px;margin-left: 10px; border: 1px solid #68A4FF;display: inline-block ;border-radius: 10px;" id="payToken">充值</a>
-                        <span style="
-                    font-size: 14px;
-                    color: #1E9FFF;
-                    cursor: pointer;
-                    display: inline-block;
-                    line-height: 38px;
-                    margin-left: 10px;" id="tokenTip">刷新次数</span>
+                            style="cursor: pointer; color: #68A4FF; padding: 0 10px; line-height: 34px; height: 34px;margin-left: 12px; border: 1px solid #68A4FF;display: inline-block ;border-radius: 10px;font-size:14px;" id="checkModel">重新检测</span>
                     </span>
                 </span>
             </div>
@@ -1880,6 +1861,42 @@
                 const tempUIdElement = $d.querySelector("input[name='userId']") || $d.querySelector("input[id='uploadUid']")
                 if (tempUIdElement && !$uid) $uid = tempUIdElement.value
                 body.appendChild(div)
+                // ---- 本地模型连接状态（面板实时显示）----
+                function checkModelStatus() {
+                    const el = $d.querySelector('#modelStatus');
+                    if (!el) return;
+                    el.textContent = '检测中...'; el.style.color = '#999';
+                    let cfg = { url: 'http://localhost:11434/v1/chat/completions', model: 'qwen2.5:7b' };
+                    try {
+                        const s = JSON.parse(localStorage.getItem('xtt_local_model') || 'null');
+                        if (s && s.url) cfg.url = s.url;
+                        if (s && s.model) cfg.model = s.model;
+                    } catch (e) { }
+                    const base = cfg.url.replace(/\/v1\/.*$/, '').replace(/\/+$/, '');
+                    GM_xmlhttpRequest({
+                        method: 'GET',
+                        url: base + '/api/tags',
+                        timeout: 5000,
+                        onload: function (res) {
+                            try {
+                                const j = JSON.parse(res.responseText);
+                                const models = (j.models || []).map(function (m) { return m.name; });
+                                if (!models.length) { el.innerHTML = '⚠️ 已连接，但无已安装模型'; el.style.color = '#FF9800'; return; }
+                                const has = models.some(function (m) { return m === cfg.model || m.split(':')[0] === cfg.model.split(':')[0]; });
+                                el.innerHTML = '✅ 已连接 <span style="color:#666;font-size:13px;">' + (has ? cfg.model : models[0]) + '</span>';
+                                el.style.color = '#4CAF50';
+                            } catch (e) {
+                                el.textContent = '❌ 返回异常'; el.style.color = '#F44336';
+                            }
+                        },
+                        onerror: function () { el.textContent = '❌ 未连接（Ollama 未启动？）'; el.style.color = '#F44336'; },
+                        ontimeout: function () { el.textContent = '❌ 连接超时'; el.style.color = '#F44336'; }
+                    });
+                }
+                const checkBtn = $d.querySelector('#checkModel');
+                if (checkBtn) checkBtn.addEventListener('click', checkModelStatus);
+                checkModelStatus();
+                setInterval(checkModelStatus, 30000);
                 const warning = $d.querySelector('.warn-txt') || $d.querySelector('.continue-study')
                 const warns = ["已開啟結課", "本课程已结课", "已开启结课"]
                 let jkdata = GM_getValue('jkdata', {})
