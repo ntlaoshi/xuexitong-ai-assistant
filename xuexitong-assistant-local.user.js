@@ -5,7 +5,7 @@
 // @description  支持学习通/学银在线的视频、章节测验、文档、直播、作业、考试；一键启动、单页面全自动、可最小化运行；答题接入本地大模型（Ollama / LM Studio 等 OpenAI 兼容接口），不依赖任何第三方付费题库。AI 生成，仅供学习交流使用。
 // @description:en Video / quiz / document / live / homework / exam automation for Chaoxing; answers via a local LLM. AI-generated, for learning and exchange only.
 // @namespace    local.llm.chaoxing
-// @version      6.2.0
+// @version      6.2.1
 // @author       申禅姌（原作）/ AI 修改
 // @run-at       document-end
 // @storageName  learningpass_local
@@ -1949,7 +1949,7 @@
                     })
                 } catch (e) { }
                 let tkToken = getTkToken()
-                $d.querySelector("#token").value = tkToken
+                const _tokenInput = $d.querySelector("#token"); if (_tokenInput) _tokenInput.value = tkToken
                 const pannel = $d.querySelector('#skpannel')
                 const tokentip = $d.querySelector('#tokentip')
                 $d.querySelector('#dosk').addEventListener('click', async () => {
@@ -2027,53 +2027,6 @@
                     pannel.style.display = 'none';
                 })
                 let awfawf = 0
-                $d.querySelector('#tokenTip').addEventListener('click', () => {
-                    let now = Math.round(new Date() / 1000)
-                    if (now - awfawf > 10) {
-                        awfawf = now
-                        ctk(tkToken)
-                    } else {
-                        tokentip.innerHTML = `
-                        <p style="text-indent: 2em;">如果答题次数有问题，可能是您正在使用的token不是正确token</p>
-                        <p style="text-indent: 2em;">更换设备、浏览器或者清空浏览器数据会导致token丢失，脚本会自动为您生成一个新Token。</p>
-                        <p style="text-indent: 2em;">如果想找回之前的Token，请查看您的微信或支付宝付款记录，在商品名中有充值过的Token。</p>
-                        <p style="text-indent: 2em;">如果您之前的Token绑定过QQ或微信，请直接访问<a href="${host}" style="color:blue;" target="_blank">题库官网</a>并使用绑定的账号登录，即可找回原Token。</p>
-                        <p style="text-indent: 2em;">找回Token后请将Token复制到当前页面的Token输入框，然后点击保存按钮。</p>
-                        <p style="text-indent: 2em;color:green;">为新Token绑定微信可以获得免费的100答题次数</p>
-                        `
-                        tokentip.style.display = 'block'
-                    }
-                })
-                $d.querySelector('#saveToken').addEventListener('click', () => {
-                    let stkToken = $d.querySelector('#token').value,
-                        reg = /^[0-9a-z]{32}$/ig
-                    if (!reg.test(stkToken)) {
-                        tokentip.innerHTML = `<p style="color:red;text-align:center;">token格式错误</p>`
-                        tokentip.style.display = 'block'
-                        setTimeout(e => {
-                            tokentip.style.display = 'none'
-                        }, 2000)
-                        $d.querySelector("#token").value = tkToken
-                        return
-                    }
-                    if (tkToken == stkToken) {
-                        tokentip.innerHTML = `<p style="color:red;text-align:center;">请在token输入框填写新token</p>`
-                        tokentip.style.display = 'block'
-                        setTimeout(e => {
-                            tokentip.style.display = 'none'
-                        }, 5000)
-                        return
-                    }
-                    tkToken = stkToken
-                    $w.localStorage.removeItem('shenchanranToken')
-                    GM_setValue('shenchanranToken', tkToken);
-                    tokentip.innerHTML = `<p style="color:green;text-align:center;">保存成功</p>`
-                    tokentip.style.display = 'block'
-                    setTimeout(e => {
-                        tokentip.style.display = 'none'
-                    }, 2000)
-                    ctk(tkToken)
-                })
             }, 1000);
         })
     }
