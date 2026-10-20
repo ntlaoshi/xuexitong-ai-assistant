@@ -5,7 +5,7 @@
 // @description  支持学习通/学银在线的视频、章节测验、文档、直播、作业、考试；一键启动、单页面全自动、可最小化运行；答题接入本地大模型（Ollama / LM Studio 等 OpenAI 兼容接口），不依赖任何第三方付费题库。AI 生成，仅供学习交流使用。
 // @description:en Video / quiz / document / live / homework / exam automation for Chaoxing; answers via a local LLM. AI-generated, for learning and exchange only.
 // @namespace    local.llm.chaoxing
-// @version      6.3.3
+// @version      6.3.4
 // @author       申禅姌（原作）/ AI 修改
 // @run-at       document-end
 // @storageName  learningpass_local
@@ -1875,7 +1875,7 @@
             setTimeout(() => {
                 const tempUIdElement = $d.querySelector("input[name='userId']") || $d.querySelector("input[id='uploadUid']")
                 if (tempUIdElement && !$uid) $uid = tempUIdElement.value
-                body.appendChild(div)
+                body.appendChild(div);
                 // ---- 答题方式：事件委托（兜底，确保点击一定响应）----
                 (function () {
                     function readCfg() {
