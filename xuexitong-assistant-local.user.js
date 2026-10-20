@@ -5,7 +5,7 @@
 // @description  支持学习通/学银在线的视频、章节测验、文档、直播、作业、考试；一键启动、单页面全自动、可最小化运行；答题接入本地大模型（Ollama / LM Studio 等 OpenAI 兼容接口），不依赖任何第三方付费题库。AI 生成，仅供学习交流使用。
 // @description:en Video / quiz / document / live / homework / exam automation for Chaoxing; answers via a local LLM. AI-generated, for learning and exchange only.
 // @namespace    local.llm.chaoxing
-// @version      6.3.0
+// @version      6.3.1
 // @author       申禅姌（原作）/ AI 修改
 // @run-at       document-end
 // @storageName  learningpass_local
@@ -1906,25 +1906,41 @@
                         if (s && s.model) cfg.model = s.model;
                     } catch (e) { }
                     const base = cfg.url.replace(/\/v1\/.*$/, '').replace(/\/+$/, '');
-                    GM_xmlhttpRequest({
-                        method: 'GET',
-                        url: base + '/api/tags',
-                        timeout: 5000,
-                        onload: function (res) {
-                            try {
-                                const j = JSON.parse(res.responseText);
-                                const models = (j.models || []).map(function (m) { return m.name; });
-                                if (!models.length) { el.innerHTML = '⚠️ 已连接，但无已安装模型'; el.style.color = '#FF9800'; return; }
-                                const has = models.some(function (m) { return m === cfg.model || m.split(':')[0] === cfg.model.split(':')[0]; });
-                                el.innerHTML = '✅ 已连接 <span style="color:#666;font-size:13px;">' + (has ? cfg.model : models[0]) + '</span>';
-                                el.style.color = '#4CAF50';
-                            } catch (e) {
-                                el.textContent = '❌ 返回异常'; el.style.color = '#F44336';
-                            }
-                        },
-                        onerror: function () { el.textContent = '❌ 未连接（Ollama 未启动？）'; el.style.color = '#F44336'; },
-                        ontimeout: function () { el.textContent = '❌ 连接超时'; el.style.color = '#F44336'; }
-                    });
+                    // 独立超时兜底：请求被挂起（不报错也不超时）时，6 秒后强制显示未连接
+                    let done = false;
+                    const finish = function (html, color) {
+                        if (done) return;
+                        done = true;
+                        el.innerHTML = html;
+                        el.style.color = color;
+                    };
+                    const fallbackTimer = setTimeout(function () {
+                        finish('❌ 未连接（Ollama 未启动？）', '#F44336');
+                    }, 6000);
+                    try {
+                        GM_xmlhttpRequest({
+                            method: 'GET',
+                            url: base + '/api/tags',
+                            timeout: 5000,
+                            onload: function (res) {
+                                clearTimeout(fallbackTimer);
+                                try {
+                                    const j = JSON.parse(res.responseText);
+                                    const models = (j.models || []).map(function (m) { return m.name; });
+                                    if (!models.length) { finish('⚠️ 已连接，但无已安装模型', '#FF9800'); return; }
+                                    const has = models.some(function (m) { return m === cfg.model || m.split(':')[0] === cfg.model.split(':')[0]; });
+                                    finish('✅ 已连接 <span style="color:#666;font-size:13px;">' + (has ? cfg.model : models[0]) + '</span>', '#4CAF50');
+                                } catch (e) {
+                                    finish('❌ 返回异常', '#F44336');
+                                }
+                            },
+                            onerror: function () { clearTimeout(fallbackTimer); finish('❌ 未连接（Ollama 未启动？）', '#F44336'); },
+                            ontimeout: function () { clearTimeout(fallbackTimer); finish('❌ 连接超时', '#F44336'); }
+                        });
+                    } catch (e) {
+                        clearTimeout(fallbackTimer);
+                        finish('❌ 未连接（请求异常）', '#F44336');
+                    }
                 }
                 const checkBtn = $d.querySelector('#checkModel');
                 if (checkBtn) checkBtn.addEventListener('click', checkModelStatus);
