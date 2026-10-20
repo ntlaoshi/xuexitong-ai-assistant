@@ -5,7 +5,7 @@
 // @description  支持学习通/学银在线的视频、章节测验、文档、直播、作业、考试；一键启动、单页面全自动、可最小化运行；答题接入本地大模型（Ollama / LM Studio 等 OpenAI 兼容接口），不依赖任何第三方付费题库。AI 生成，仅供学习交流使用。
 // @description:en Video / quiz / document / live / homework / exam automation for Chaoxing; answers via a local LLM. AI-generated, for learning and exchange only.
 // @namespace    local.llm.chaoxing
-// @version      6.2.2
+// @version      6.2.3
 // @author       申禅姌（原作）/ AI 修改
 // @run-at       document-end
 // @storageName  learningpass_local
@@ -359,6 +359,7 @@
             display: flex;
         `;
             this.tokenWrap.appendChild(this.tokenInput);
+            this.tokenWrap.style.display = 'none'; // 题库 token 已废弃（答题走本地模型）
             this.saveBtn.textContent = "保存";
             this.saveBtn.style.cssText = `padding:6px 12px;background:#1f76ff;color:#fff;border:none;border-radius:6px;cursor:pointer;`;
             this.AIBtn.textContent = "AI答题";
@@ -366,9 +367,7 @@
             if (GM_getValue('aiAnswer', false)) {
                 this.AIBtn.style.background = '#1f76ff'
             }
-            this.restCount.textContent = "剩余次数：--";
-            this.restCount.setAttribute('title', '点击前往充值');
-            this.restCount.style.cursor = 'pointer';
+            this.restCount.style.display = 'none';
             this.restCount.addEventListener('click', () => {
                 const url = host + "?token=" + GM_getValue('shenchanranToken', false) + "#2";
                 let newWindow = null;
@@ -631,6 +630,7 @@
 
         /* ✔ 设置剩余次数 */
         setRestCount(n) {
+            return; // 本地模型版：无需题库剩余次数
             this.restCount.textContent = "剩余次数：" + n;
             let color = 'blue';
             if (n < 100) {
@@ -1398,7 +1398,8 @@
                         </div>
                     </div>
                 `;
-                $d.body.appendChild(modal)
+                // 题库登录弹窗已移除（答题改走本地模型，无需题库登录）
+                // $d.body.appendChild(modal)
                 const weChatBtn = modal.querySelector('#weChatBinddddd')
                 const randomBtn = modal.querySelector('#randomGGG')
                 const manualBtn = modal.querySelector('#manualalala')
@@ -1581,7 +1582,7 @@
                     let token = getCookie('Token')
                     if (token) {
                         GM_setValue('waitForLogin', token)
-                        alert('题库登陆成功，请回到刷课页面')
+                        alert('登录成功，请回到刷课页面')
                     }
                 }
             }
@@ -2251,27 +2252,6 @@
                         <form style="margin-top: 25px;">
                             <div class="form-row">
                                 <div class="form-group col-md-6">
-                                    <label for="exampleInputEmail1">题库Token</label>
-                                    <div class="form-inline">
-                                        <input type="text" class="form-control" id="tokenInput" value="" />&ensp;
-                                        <a class="btn btn-outline-primary" id="bindQQ" target="_blank">绑定微信</a>
-                                    </div>
-                                    <small class="form-text text-muted">您需要填写题库token才能连接题库答题</small>
-                                </div>
-                                <div class="form-group col-md-6">
-                                    <label for="exampleInputPassword1">剩余次数</label>
-                                    <div class="form-inline">
-                                        <span class="floattipbox">
-                                            <input type="number" class="form-control" id="ugyvciuu" readonly="readonly"
-                                                value="9999" /><span class="floatTip"
-                                                id="ciuuq">刷新次数</span></span>&ensp;
-                                        <a class="btn btn-outline-primary" id="payButton" target="_blank">充值</a>
-                                    </div>
-                                    <small class="form-text text-muted">查题成功一次扣除1次数</small>
-                                </div>
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group col-md-6">
                                     <label for="exampleInputPassword1">视频倍速</label>
                                     <input type="number" class="form-control" id="beisuInput" />
                                     <small class="form-text text-muted">倍速大于1倍会被清空进度，大于2倍可能无法完成任务</small>
@@ -2420,7 +2400,7 @@
             }
             AIbutton.onclick = function () {
                 if (!$w['AIwarning']) {
-                    $layer('<center><p>AI答题目前为测试功能</p><p>不保证AI作答的成绩</p><p>只适用于补充题库没查到的题</p><p>建议关闭自动提交，作答完成后人工检查</p><p>脚本问题反馈群：<b>' + $qqgroup + '</b></p></center>');
+                    $layer('<center><p>AI答题目前为测试功能</p><p>由本地大模型作答，不保证成绩</p><p>建议关闭自动提交，作答完成后人工检查</p></center>');
                     $w['AIwarning'] = true;
                 }
                 let s = AIbutton.getAttribute('class').includes('light');
@@ -2461,7 +2441,7 @@
                         $w.logs.clear()
                         $w.logs.addLog('token已变更', 'green')
                         if (GM_getValue('tkLeft', 0) > 0) {
-                            $layer('您的题库剩余次数不为0，请注意保存原token<br>丢失后请自行前往微信或支付宝查询付款记录<br>原token：' + tkToken)
+                            $layer('本地模型答题已启用，无需题库 token')
                         }
                     }
                     $layer('配置保存成功，已实时生效')
